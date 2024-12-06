@@ -29,6 +29,18 @@ pub fn main() !void {
     }
 }
 
+fn checkUndefined(comptime T: type, ptr: *const T) bool {
+    const bytes = std.mem.asBytes(ptr);
+
+    for (bytes) |byte| {
+        if (byte != 0xaa) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 const Edge = struct { from: u8, to: u8 };
 
 fn isCorrectlyOrdered(pages: []const u8, edges: std.AutoHashMap(Edge, void)) bool {
@@ -69,87 +81,153 @@ fn findNode(list: List, value: u8) ?*List.Node {
     return null;
 }
 
-fn topo_sort(elems: []u8, incoming_edges: std.AutoHashMap(u8, List), outgoing_edges: std.AutoHashMap(u8, List)) void {
+fn topo_sort(alloc: std.mem.Allocator, elems: []u8, edges: std.AutoHashMap(Edge, void)) !void {
+
+    // first build maps of edges
+
+    var outgoing_edges = std.AutoHashMap(u8, std.AutoHashMap(u8, void)).init(alloc);
+    var incoming_edges = std.AutoHashMap(u8, std.AutoHashMap(u8, void)).init(alloc);
+
+    {
+        var it = edges.iterator();
+
+        while (it.next()) |edge| {
+            const from = edge.key_ptr.from;
+            const to = edge.key_ptr.to;
+
+            // if either to or from are not in elems, ignore this edge
+            // -> not in subgraph spanned by elems
+            if (findIndex(elems, from) == null or findIndex(elems, to) == null) {
+                continue;
+            }
+
+            // add outgoing edge to outgoing_edges[from][to]
+
+            const outgoing_entry = try outgoing_edges.getOrPut(from);
+
+            if (!outgoing_entry.found_existing) {
+                // check for undefined
+                std.debug.assert(checkUndefined(@TypeOf(outgoing_entry.value_ptr.*), outgoing_entry.value_ptr));
+
+                outgoing_entry.value_ptr.* = std.AutoHashMap(u8, void).init(alloc);
+            }
+
+            // check for undefined
+            std.debug.assert(!checkUndefined(@TypeOf(outgoing_entry.value_ptr.*), outgoing_entry.value_ptr));
+
+            try outgoing_entry.value_ptr.put(to, {});
+
+            // add incoming edge to incoming_edges[to][from]
+
+            const incoming_entry = try incoming_edges.getOrPut(to);
+
+            if (!incoming_entry.found_existing) {
+                std.debug.assert(checkUndefined(@TypeOf(incoming_entry.value_ptr.*), incoming_entry.value_ptr));
+
+                incoming_entry.value_ptr.* = std.AutoHashMap(u8, void).init(alloc);
+            }
+
+            std.debug.assert(!checkUndefined(@TypeOf(incoming_entry.value_ptr.*), incoming_entry.value_ptr));
+
+            try incoming_entry.value_ptr.put(from, {});
+        }
+    }
+
+    {
+        var it = edges.iterator();
+
+        while (it.next()) |edge| {
+            const from = edge.key_ptr.from;
+            const to = edge.key_ptr.to;
+
+            // if either to or from are not in elems, ignore this edge
+            // -> not in subgraph spanned by elems
+            if (findIndex(elems, from) == null or findIndex(elems, to) == null) {
+                continue;
+            }
+
+            std.debug.assert(outgoing_edges.get(from).?.get(to) != null);
+            std.debug.assert(incoming_edges.get(to).?.get(from) != null);
+        }
+    }
+
     // this function works in-place by splitting elems into an first, sorted part and a later,
     // unsorted part
-
-    var _incoming_edges = incoming_edges;
-    var _outgoing_edges = outgoing_edges;
 
     // this index marks the first element of the unsorted part of elems
     var next_unsorted_idx: usize = 0;
 
     // step 1: find all nodes with no incoming edges, move them to the sorted part of the list
-    for (next_unsorted_idx..elems.len) |i| {
-        if (_incoming_edges.get(elems[i]) == null) {
+    for (0..elems.len) |i| {
+        const incoming_set = incoming_edges.get(elems[i]);
+
+        if (incoming_set == null) {
             // if elems[i] has no incoming edges, move it to the end of the sorted list
             std.mem.swap(u8, &elems[next_unsorted_idx], &elems[i]);
 
             // advance end of sorted list by one
             next_unsorted_idx += 1;
+        } else {
+            std.debug.assert(incoming_set.?.count() != 0);
         }
     }
 
     // step 2: progressively iterate over sorted section, removing outgoing edges and adding nodes
     // with no incoming edges to the end of the sorted section
     for (elems) |value| {
+
         // if value has outgoing edges...
-        if (_outgoing_edges.get(value)) |outgoing_list| {
+        if (outgoing_edges.get(value)) |outgoing_set| {
+
             // iterate over outgoing edges
-            var node_ptr_maybe = outgoing_list.first;
-            while (node_ptr_maybe != null) : (node_ptr_maybe = node_ptr_maybe.?.next) {
-                const node_ptr = node_ptr_maybe.?;
+            var outgoing_entry_it = outgoing_set.iterator();
 
-                const to_value = node_ptr.*.data;
+            while (outgoing_entry_it.next()) |entry| {
+                const next = entry.key_ptr.*;
 
-                if (_incoming_edges.getPtr(to_value)) |incoming_list_ptr| {
-                    // cannot fail: we know the edge (value, to_value) existts
-                    const node = findNode(incoming_list_ptr.*, value).?;
+                // we have an edge value -> next
 
-                    // remove edge
-                    incoming_list_ptr.remove(node);
+                // cannot fail: we know the edge (value, to_value) exists
+                const incoming_map = incoming_edges.getPtr(next).?;
 
-                    if (incoming_list_ptr.len == 0) {
-                        _ = _incoming_edges.remove(to_value);
+                {
+                    const found = incoming_map.remove(value);
+                    std.debug.assert(found);
+                }
 
-                        // cannot fail: to_elem must be in unsorted section of elems // [next_unsorted_idx..]
-                        const to_value_index = next_unsorted_idx + findIndex(elems[next_unsorted_idx..], to_value).?;
-
-                        // std.debug.print("{}    {}\n\n", .{ next_unsorted_idx, to_value_index });
-
-                        std.mem.swap(u8, &elems[next_unsorted_idx], &elems[to_value_index]);
-                        next_unsorted_idx += 1;
+                if (incoming_map.count() == 0) {
+                    // no more incoming edges for next
+                    {
+                        const found = incoming_edges.remove(next);
+                        std.debug.assert(found);
                     }
-                } else {
-                    // we know we have an edge (value, to_value), can't fail
-                    unreachable;
+
+                    // cannot fail: to_elem must be in unsorted section of elems // [next_unsorted_idx..]
+                    const to_value_index = next_unsorted_idx + findIndex(elems[next_unsorted_idx..], next).?;
+
+                    std.mem.swap(u8, &elems[next_unsorted_idx], &elems[to_value_index]);
+                    next_unsorted_idx += 1;
                 }
             }
 
             // remove all outgoing edges at once
-            _ = _outgoing_edges.remove(value);
+            {
+                const found = outgoing_edges.remove(value);
+                std.debug.assert(found);
+            }
         }
     }
 
-    std.debug.assert(_incoming_edges.count() == 0);
-    std.debug.assert(_outgoing_edges.count() == 0);
+    std.debug.assert(incoming_edges.count() == 0);
+    std.debug.assert(outgoing_edges.count() == 0);
 }
 
 fn part1(alloc: std.mem.Allocator, reader: anytype) !u64 {
     var line_reader = utils.lineReader(alloc, reader);
     defer line_reader.deinit();
 
-    // var elems_set = std.AutoHashMap(u8, void).init(alloc);
-    // defer elems_set.deinit();
-
-    // var edge_arena = std.heap.ArenaAllocator.init(alloc);
-    // defer edge_arena.deinit();
-
     var edges = std.AutoHashMap(Edge, void).init(alloc);
     defer edges.deinit();
-
-    // var outgoing_edges = std.AutoHashMap(u8, List).init(edge_arena.allocator());
-    // var incoming_edges = std.AutoHashMap(u8, List).init(edge_arena.allocator());
 
     while (try line_reader.next()) |line| {
         if (line.len == 0) {
@@ -163,66 +241,61 @@ fn part1(alloc: std.mem.Allocator, reader: anytype) !u64 {
 
         std.debug.assert((try it.next()) == null);
 
-        // try elems_set.put(from, {});
-        // try elems_set.put(to, {});
-
-        // try edges.append(.{ .from = from, .to = to });
         try edges.put(.{ .from = from, .to = to }, {});
-
-        // _ = try outgoing_edges.getOrPutValue(from, List{});
-
-        // if (outgoing_edges.getPtr(from)) |list| {
-        //     const node_ptr = try edge_arena.allocator().create(List.Node);
-        //     node_ptr.*.data = to;
-
-        //     list.*.prepend(node_ptr);
-        // } else {
-        //     unreachable;
-        // }
-
-        // _ = try incoming_edges.getOrPutValue(to, List{});
-
-        // if (incoming_edges.getPtr(to)) |list| {
-        //     const node_ptr = try edge_arena.allocator().create(List.Node);
-        //     node_ptr.*.data = from;
-
-        //     list.*.prepend(node_ptr);
-        // } else {
-        //     unreachable;
-        // }
     }
 
-    // const elems = blk: {
-    //     const elems = try alloc.alloc(u8, elems_set.count());
+    var update = std.ArrayList(u8).init(alloc);
+    defer update.deinit();
 
-    //     var it = elems_set.iterator();
+    var sum_middle_pages: u64 = 0;
 
-    //     for (elems) |*p| {
-    //         p.* = it.next().?.key_ptr.*;
-    //     }
+    while (try line_reader.next()) |line| {
+        update.clearRetainingCapacity();
 
-    //     std.debug.assert(it.next() == null);
+        var it = utils.numberParserWithDelimiter(u8, line, ',');
 
-    //     break :blk elems;
-    // };
-    // defer alloc.free(elems);
+        while (try it.next()) |n| {
+            try update.append(n);
+        }
 
-    // topo_sort(elems, incoming_edges, outgoing_edges);
+        std.debug.assert(update.items.len % 2 == 1);
 
-    // std.debug.print("sorted elems:  ", .{});
-    // utils.printSlice(u8, elems);
-    // std.debug.print("\n", .{});
+        if (!isCorrectlyOrdered(update.items, edges)) {
+            continue;
+        }
 
-    // for (edges.items) |edge| {
-    //     std.debug.print("from: {}    to: {}\n", .{ edge.from, edge.to });
+        const middle_idx = update.items.len / 2;
 
-    //     const from_idx = findIndex(elems, edge.from).?;
-    //     const to_idx = findIndex(elems, edge.to).?;
+        sum_middle_pages += update.items[middle_idx];
+    }
 
-    //     std.debug.print("from_idx: {}    to_idx: {}\n", .{ from_idx, to_idx });
+    return sum_middle_pages;
+}
 
-    //     std.debug.assert(from_idx < to_idx);
-    // }
+fn part2(alloc: std.mem.Allocator, reader: anytype) !u64 {
+    var line_reader = utils.lineReader(alloc, reader);
+    defer line_reader.deinit();
+
+    var edge_arena = std.heap.ArenaAllocator.init(alloc);
+    defer edge_arena.deinit();
+
+    var edges = std.AutoHashMap(Edge, void).init(alloc);
+    defer edges.deinit();
+
+    while (try line_reader.next()) |line| {
+        if (line.len == 0) {
+            break;
+        }
+
+        var it = utils.numberParserWithDelimiter(u8, line, '|');
+
+        const from = (try it.next()).?;
+        const to = (try it.next()).?;
+
+        std.debug.assert((try it.next()) == null);
+
+        try edges.put(.{ .from = from, .to = to }, {});
+    }
 
     var update = std.ArrayList(u8).init(alloc);
     defer update.deinit();
@@ -257,20 +330,17 @@ fn part1(alloc: std.mem.Allocator, reader: anytype) !u64 {
         // }
 
         if (isCorrectlyOrdered(update.items, edges)) {
-            const middle_idx = update.items.len / 2;
-
-            sum_middle_pages += update.items[middle_idx];
+            continue;
         }
+
+        try topo_sort(edge_arena.allocator(), update.items, edges);
+
+        const middle_idx = update.items.len / 2;
+
+        sum_middle_pages += update.items[middle_idx];
     }
 
     return sum_middle_pages;
-}
-
-fn part2(alloc: std.mem.Allocator, reader: anytype) !u32 {
-    _ = alloc;
-    _ = reader;
-
-    return 0;
 }
 
 test "part1 example" {
@@ -327,38 +397,56 @@ test "part1 input" {
     try std.testing.expect(result == 5129);
 }
 
-// test "part2 example" {
-//     const alloc = std.testing.allocator;
+test "part2 example" {
+    const alloc = std.testing.allocator;
 
-//     const example =
-//         \\MMMSXXMASM
-//         \\MSAMXMSMSA
-//         \\AMXSXMAAMM
-//         \\MSAMASMSMX
-//         \\XMASAMXAMM
-//         \\XXAMMXXAMA
-//         \\SMSMSASXSS
-//         \\SAXAMASAAA
-//         \\MAMMMXMMMM
-//         \\MXMXAXMASX
-//     ;
+    const example =
+        \\47|53
+        \\97|13
+        \\97|61
+        \\97|47
+        \\75|29
+        \\61|13
+        \\75|53
+        \\29|13
+        \\97|29
+        \\53|29
+        \\61|53
+        \\97|53
+        \\61|29
+        \\47|13
+        \\75|47
+        \\97|75
+        \\47|61
+        \\75|61
+        \\47|29
+        \\75|13
+        \\53|13
+        \\
+        \\75,47,61,53,29
+        \\97,61,53,29,13
+        \\75,29,13
+        \\75,97,47,61,53
+        \\61,13,29
+        \\97,13,75,29,47
+    ;
 
-//     var stream = std.io.fixedBufferStream(example);
+    var stream = std.io.fixedBufferStream(example);
 
-//     const result = try part2(alloc, stream.reader());
+    const result = try part2(alloc, stream.reader());
 
-//     try std.testing.expect(result == 9);
-// }
+    try std.testing.expect(result == 123);
+}
 
-// test "part2 input" {
-//     const alloc = std.testing.allocator;
+test "part2 input" {
+    const alloc = std.testing.allocator;
 
-//     const filename = "inputs/day5.txt";
+    const filename = "inputs/day5.txt";
 
-//     const file_reader = try utils.FileReader.init(alloc, filename);
-//     defer file_reader.deinit();
+    const file_reader = try utils.FileReader.init(alloc, filename);
+    defer file_reader.deinit();
 
-//     const result = try part2(alloc, file_reader.reader());
+    const result = try part2(alloc, file_reader.reader());
 
-//     try std.testing.expect(result == 1950);
-// }
+    try std.testing.expect(result == 4077);
+}

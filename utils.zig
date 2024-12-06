@@ -21,11 +21,33 @@ pub fn range(alloc: std.mem.Allocator, n: usize) ![]usize {
 }
 
 pub fn printSlice(comptime T: type, slice: []const T) void {
+    if (slice.len == 0) {
+        std.debug.print("[ ]", .{});
+        return;
+    }
+
     std.debug.print("[ ", .{});
+
     for (slice[0 .. slice.len - 1]) |x| {
         std.debug.print("{}, ", .{x});
     }
+
     std.debug.print("{} ]", .{slice[slice.len - 1]});
+}
+
+pub fn printlnSlice(comptime T: type, slice: []const T) void {
+    if (slice.len == 0) {
+        std.debug.print("[ ]\n", .{});
+        return;
+    }
+
+    std.debug.print("[ ", .{});
+
+    for (slice[0 .. slice.len - 1]) |x| {
+        std.debug.print("{}, ", .{x});
+    }
+
+    std.debug.print("{} ]\n", .{slice[slice.len - 1]});
 }
 
 pub const FileReader = struct {
