@@ -1,59 +1,32 @@
 const std = @import("std");
 
-// pub const LineReader = struct {
-//     const FileReader = std.fs.File.Reader;
-//     const BufferedReader = std.io.BufferedReader(4096, FileReader);
-//     const Reader = std.io.Reader(*BufferedReader, std.fs.File.Reader.Error, BufferedReader.read);
+pub fn rangeComptime(comptime n: usize) [n]usize {
+    var array: [n]usize = undefined;
 
-//     alloc: std.mem.Allocator,
+    for (0.., &array) |i, *elem| {
+        elem.* = i;
+    }
 
-//     file: std.fs.File,
+    return array;
+}
 
-//     line_buf: std.ArrayList(u8),
+pub fn range(alloc: std.mem.Allocator, n: usize) ![]usize {
+    var array = try alloc.alloc(usize, n);
 
-//     buf_reader: *BufferedReader,
-//     reader: Reader,
+    for (0..n) |i| {
+        array[i] = i;
+    }
 
-//     pub fn init(alloc: std.mem.Allocator, filename: []const u8) !LineReader {
-//         const file = try std.fs.cwd().openFile(filename, .{});
+    return array;
+}
 
-//         const file_reader = file.reader();
-
-//         const buf_reader = try alloc.create(BufferedReader);
-//         buf_reader.* = std.io.bufferedReader(file_reader);
-
-//         const reader: Reader = Reader{ .context = buf_reader };
-
-//         const line_buf = std.ArrayList(u8).init(alloc);
-
-//         return .{
-//             .alloc = alloc,
-//             .file = file,
-//             .line_buf = line_buf,
-//             .buf_reader = buf_reader,
-//             .reader = reader,
-//         };
-//     }
-
-//     pub fn deinit(self: *LineReader) void {
-//         self.file.close();
-
-//         self.line_buf.deinit();
-
-//         self.alloc.destroy(self.buf_reader);
-//     }
-
-//     pub fn next(self: *LineReader) !?[]u8 {
-//         self.line_buf.clearRetainingCapacity();
-
-//         self.reader.streamUntilDelimiter(self.line_buf.writer(), '\n', 4096) catch |err| switch (err) {
-//             error.EndOfStream => return null,
-//             else => return err,
-//         };
-
-//         return self.line_buf.items;
-//     }
-// };
+pub fn printSlice(comptime T: type, slice: []const T) void {
+    std.debug.print("[ ", .{});
+    for (slice[0 .. slice.len - 1]) |x| {
+        std.debug.print("{}, ", .{x});
+    }
+    std.debug.print("{} ]", .{slice[slice.len - 1]});
+}
 
 pub const FileReader = struct {
     const BufferedReader = std.io.BufferedReader(4096, std.fs.File.Reader);
@@ -149,4 +122,8 @@ pub fn NumberParser(comptime T: type) type {
 
 pub fn numberParser(comptime T: type, input: []const u8) NumberParser(T) {
     return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, ' ') };
+}
+
+pub fn numberParserWithDelimiter(comptime T: type, input: []const u8, delimiter: u8) NumberParser(T) {
+    return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, delimiter) };
 }

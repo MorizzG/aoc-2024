@@ -41,26 +41,6 @@ pub fn main() !void {
     }
 }
 
-fn rangeConst(comptime n: usize) [n]usize {
-    var array: [n]usize = undefined;
-
-    for (0.., &array) |i, *elem| {
-        elem.* = i;
-    }
-
-    return array;
-}
-
-fn range(alloc: std.mem.Allocator, n: usize) ![]usize {
-    var array = try alloc.alloc(usize, n);
-
-    for (0..n) |i| {
-        array[i] = i;
-    }
-
-    return array;
-}
-
 fn argsort_cmp(comptime T: type, comptime lessThanFn: fn (ctx: void, lhs: T, rhs: T) bool) (fn ([]const T, usize, usize) bool) {
     return struct {
         fn cmp(array: []const T, left_idx: usize, right_idx: usize) bool {
@@ -94,8 +74,8 @@ fn part1(alloc: std.mem.Allocator, reader: anytype) !u64 {
 
     std.debug.assert(right_list.items.len == num_lines);
 
-    const left_idxs = try range(alloc, num_lines);
-    const right_idxs = try range(alloc, num_lines);
+    const left_idxs = try utils.range(alloc, num_lines);
+    const right_idxs = try utils.range(alloc, num_lines);
     defer alloc.free(left_idxs);
     defer alloc.free(right_idxs);
 
