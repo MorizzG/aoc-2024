@@ -1,26 +1,12 @@
 const std = @import("std");
 
-const utils = @import("utils.zig");
+const utils = @import("lib/utils.zig");
+
+const filename = "inputs/day1.txt";
 
 pub fn main() !void {
-    // // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    // std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-
-    // // stdout is for the actual output of your application, for example if you
-    // // are implementing gzip, then only the compressed bytes should be sent to
-    // // stdout, not any debugging messages.
-    // const stdout_file = std.io.getStdOut().writer();
-    // var bw = std.io.bufferedWriter(stdout_file);
-    // const stdout = bw.writer();
-
-    // try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    // try bw.flush(); // don't forget to flush!
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();
-
-    const filename = "inputs/day1.txt";
 
     {
         const file_reader = try utils.FileReader.init(alloc, filename);
@@ -158,20 +144,18 @@ test "part1 example" {
 
     const result = try part1(alloc, stream.reader());
 
-    try std.testing.expect(result == 11);
+    try std.testing.expectEqual(11, result);
 }
 
 test "part1 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day1.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part1(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 1506483);
+    try std.testing.expectEqual(1506483, result);
 }
 
 test "part2 example" {
@@ -190,18 +174,16 @@ test "part2 example" {
 
     const result = try part2(alloc, stream.reader());
 
-    try std.testing.expect(result == 31);
+    try std.testing.expectEqual(31, result);
 }
 
 test "part2 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day1.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part2(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 23126924);
+    try std.testing.expectEqual(23126924, result);
 }

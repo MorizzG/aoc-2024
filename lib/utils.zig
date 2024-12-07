@@ -1,55 +1,5 @@
 const std = @import("std");
 
-pub fn rangeComptime(comptime n: usize) [n]usize {
-    var array: [n]usize = undefined;
-
-    for (0.., &array) |i, *elem| {
-        elem.* = i;
-    }
-
-    return array;
-}
-
-pub fn range(alloc: std.mem.Allocator, n: usize) ![]usize {
-    var array = try alloc.alloc(usize, n);
-
-    for (0..n) |i| {
-        array[i] = i;
-    }
-
-    return array;
-}
-
-pub fn printSlice(comptime T: type, slice: []const T) void {
-    if (slice.len == 0) {
-        std.debug.print("[ ]", .{});
-        return;
-    }
-
-    std.debug.print("[ ", .{});
-
-    for (slice[0 .. slice.len - 1]) |x| {
-        std.debug.print("{}, ", .{x});
-    }
-
-    std.debug.print("{} ]", .{slice[slice.len - 1]});
-}
-
-pub fn printlnSlice(comptime T: type, slice: []const T) void {
-    if (slice.len == 0) {
-        std.debug.print("[ ]\n", .{});
-        return;
-    }
-
-    std.debug.print("[ ", .{});
-
-    for (slice[0 .. slice.len - 1]) |x| {
-        std.debug.print("{}, ", .{x});
-    }
-
-    std.debug.print("{} ]\n", .{slice[slice.len - 1]});
-}
-
 pub const FileReader = struct {
     const BufferedReader = std.io.BufferedReader(4096, std.fs.File.Reader);
     const Reader = std.io.Reader(*BufferedReader, std.fs.File.Reader.Error, BufferedReader.read);
@@ -148,4 +98,82 @@ pub fn numberParser(comptime T: type, input: []const u8) NumberParser(T) {
 
 pub fn numberParserWithDelimiter(comptime T: type, input: []const u8, delimiter: u8) NumberParser(T) {
     return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, delimiter) };
+}
+
+pub fn rangeComptime(comptime n: usize) [n]usize {
+    var array: [n]usize = undefined;
+
+    for (0.., &array) |i, *elem| {
+        elem.* = i;
+    }
+
+    return array;
+}
+
+pub fn range(alloc: std.mem.Allocator, n: usize) ![]usize {
+    var array = try alloc.alloc(usize, n);
+
+    for (0..n) |i| {
+        array[i] = i;
+    }
+
+    return array;
+}
+
+pub fn printSlice(comptime T: type, slice: []const T) void {
+    if (slice.len == 0) {
+        std.debug.print("[ ]", .{});
+        return;
+    }
+
+    std.debug.print("[ ", .{});
+
+    for (slice[0 .. slice.len - 1]) |x| {
+        std.debug.print("{}, ", .{x});
+    }
+
+    std.debug.print("{} ]", .{slice[slice.len - 1]});
+}
+
+pub fn printlnSlice(comptime T: type, slice: []const T) void {
+    if (slice.len == 0) {
+        std.debug.print("[ ]\n", .{});
+        return;
+    }
+
+    std.debug.print("[ ", .{});
+
+    for (slice[0 .. slice.len - 1]) |x| {
+        std.debug.print("{}, ", .{x});
+    }
+
+    std.debug.print("{} ]\n", .{slice[slice.len - 1]});
+}
+
+pub fn num_digits(n: anytype) std.math.Log2Int(@TypeOf(n)) {
+    return std.math.log10_int(n) + 1;
+}
+
+test "num_digits" {
+    // try std.fmt.allocPrint(
+    //     std.testing.allocator,
+    //     "Expected {} to have 4 digit, but got {} instead",
+    //     .{ n, num_digits },
+    // );
+
+    for (2..10) |n| {
+        try std.testing.expectEqual(num_digits(n), 1);
+    }
+
+    for (10..100) |n| {
+        try std.testing.expectEqual(num_digits(n), 2);
+    }
+
+    for (100..1_000) |n| {
+        try std.testing.expectEqual(num_digits(n), 3);
+    }
+
+    for (1_000..10_000) |n| {
+        try std.testing.expectEqual(num_digits(n), 4);
+    }
 }

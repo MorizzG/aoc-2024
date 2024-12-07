@@ -1,14 +1,14 @@
 const std = @import("std");
 
-const utils = @import("utils.zig");
+const utils = @import("lib/utils.zig");
 
 const isDigit = std.ascii.isDigit;
+
+const filename = "inputs/day3.txt";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();
-
-    const filename = "inputs/day3.txt";
 
     {
         const file_reader = try utils.FileReader.init(alloc, filename);
@@ -240,20 +240,18 @@ test "part1 example" {
 
     const result = try part1(alloc, stream.reader());
 
-    try std.testing.expect(result == 161);
+    try std.testing.expectEqual(161, result);
 }
 
 test "part1 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day3.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part1(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 156388521);
+    try std.testing.expectEqual(156388521, result);
 }
 
 test "part2 example" {
@@ -265,18 +263,16 @@ test "part2 example" {
 
     const result = try part2(alloc, stream.reader());
 
-    try std.testing.expect(result == 48);
+    try std.testing.expectEqual(48, result);
 }
 
 test "part2 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day3.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part2(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 75920122);
+    try std.testing.expectEqual(75920122, result);
 }

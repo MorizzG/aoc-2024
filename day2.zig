@@ -1,6 +1,31 @@
 const std = @import("std");
 
-const utils = @import("utils.zig");
+const utils = @import("lib/utils.zig");
+
+const filename = "inputs/day2.txt";
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const alloc = gpa.allocator();
+
+    {
+        const file_reader = try utils.FileReader.init(alloc, filename);
+        defer file_reader.deinit();
+
+        const result = try part1(alloc, file_reader.reader());
+
+        try std.io.getStdOut().writer().print("Day 2, part 1: {}\n", .{result});
+    }
+
+    {
+        const file_reader = try utils.FileReader.init(alloc, filename);
+        defer file_reader.deinit();
+
+        const result = try part2(alloc, file_reader.reader());
+
+        try std.io.getStdOut().writer().print("Day 2, part 2: {}\n", .{result});
+    }
+}
 
 fn Chain(comptime T: type) type {
     return struct {
@@ -27,31 +52,6 @@ fn Chain(comptime T: type) type {
             unreachable;
         }
     };
-}
-
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const alloc = gpa.allocator();
-
-    const filename = "inputs/day2.txt";
-
-    {
-        const file_reader = try utils.FileReader.init(alloc, filename);
-        defer file_reader.deinit();
-
-        const result = try part1(alloc, file_reader.reader());
-
-        try std.io.getStdOut().writer().print("Day 2, part 1: {}\n", .{result});
-    }
-
-    {
-        const file_reader = try utils.FileReader.init(alloc, filename);
-        defer file_reader.deinit();
-
-        const result = try part2(alloc, file_reader.reader());
-
-        try std.io.getStdOut().writer().print("Day 2, part 2: {}\n", .{result});
-    }
 }
 
 fn check(report: []const i32) bool {
@@ -191,20 +191,18 @@ test "part1 example" {
 
     const result = try part1(alloc, stream.reader());
 
-    try std.testing.expect(result == 2);
+    try std.testing.expectEqual(2, result);
 }
 
 test "part1 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day2.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part1(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 549);
+    try std.testing.expectEqual(549, result);
 }
 
 test "part2 example" {
@@ -223,18 +221,16 @@ test "part2 example" {
 
     const result = try part2(alloc, stream.reader());
 
-    try std.testing.expect(result == 4);
+    try std.testing.expectEqual(4, result);
 }
 
 test "part2 input" {
     const alloc = std.testing.allocator;
-
-    const filename = "inputs/day2.txt";
 
     const file_reader = try utils.FileReader.init(alloc, filename);
     defer file_reader.deinit();
 
     const result = try part2(alloc, file_reader.reader());
 
-    try std.testing.expect(result == 589);
+    try std.testing.expectEqual(589, result);
 }
