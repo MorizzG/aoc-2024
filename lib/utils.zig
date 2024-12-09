@@ -100,6 +100,38 @@ pub fn numberParserWithDelimiter(comptime T: type, input: []const u8, delimiter:
     return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, delimiter) };
 }
 
+pub fn allocGrid(comptime T: type, alloc: std.mem.Allocator, n: usize, m: usize) ![][]T {
+    const grid = try alloc.alloc([]T, n);
+
+    for (grid) |*line| {
+        line.* = try alloc.alloc(T, m);
+    }
+
+    return grid;
+}
+
+pub fn allocGridInit(comptime T: type, alloc: std.mem.Allocator, n: usize, m: usize, init: T) ![][]T {
+    const grid = try alloc.alloc([]T, n);
+
+    for (grid) |*line| {
+        line.* = try alloc.alloc(T, m);
+
+        for (line.*) |*x| {
+            x.* = init;
+        }
+    }
+
+    return grid;
+}
+
+pub fn deinitGrid(comptime T: type, alloc: std.mem.Allocator, grid: [][]T) void {
+    for (grid) |line| {
+        alloc.free(line);
+    }
+
+    alloc.free(grid);
+}
+
 pub fn rangeComptime(comptime n: usize) [n]usize {
     var array: [n]usize = undefined;
 
