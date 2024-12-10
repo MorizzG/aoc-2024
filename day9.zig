@@ -16,7 +16,7 @@ pub fn main() !void {
 
         const result = try part1(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 8, part 1: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day 9, part 1: {}\n", .{result});
     }
 
     {
@@ -25,7 +25,7 @@ pub fn main() !void {
 
         const result = try part2(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 8, part 2: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day 9, part 2: {}\n", .{result});
     }
 }
 
