@@ -2,7 +2,9 @@ const std = @import("std");
 
 const utils = @import("lib/utils.zig");
 
-const filename = "inputs/day6.txt";
+const day = "6";
+
+const filename = "inputs/day" ++ day ++ ".txt";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,7 +16,7 @@ pub fn main() !void {
 
         const result = try part1(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 6, part 1: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day " ++ day ++ ", part 1: {}\n", .{result});
     }
 
     {
@@ -23,7 +25,7 @@ pub fn main() !void {
 
         const result = try part2(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 6, part 2: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day " ++ day ++ ", part 2: {}\n", .{result});
     }
 }
 

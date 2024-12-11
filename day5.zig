@@ -4,7 +4,9 @@ const utils = @import("lib/utils.zig");
 
 const List = std.DoublyLinkedList(u8);
 
-const filename = "inputs/day5.txt";
+const day = "5";
+
+const filename = "inputs/day" ++ day ++ ".txt";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -16,7 +18,7 @@ pub fn main() !void {
 
         const result = try part1(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 5, part 1: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day " ++ day ++ ", part 1: {}\n", .{result});
     }
 
     {
@@ -25,7 +27,7 @@ pub fn main() !void {
 
         const result = try part2(alloc, file_reader.reader());
 
-        try std.io.getStdOut().writer().print("Day 5, part 2: {}\n", .{result});
+        try std.io.getStdOut().writer().print("Day " ++ day ++ ", part 2: {}\n", .{result});
     }
 }
 

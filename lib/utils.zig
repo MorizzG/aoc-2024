@@ -92,12 +92,14 @@ pub fn NumberParser(comptime T: type) type {
     };
 }
 
-pub fn numberParser(comptime T: type, input: []const u8) NumberParser(T) {
-    return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, ' ') };
+pub fn numberParserWithDelimiter(comptime T: type, input: []const u8, delimiter: u8) NumberParser(T) {
+    const input_trimmed = std.mem.trim(u8, input, "\n");
+
+    return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input_trimmed, delimiter) };
 }
 
-pub fn numberParserWithDelimiter(comptime T: type, input: []const u8, delimiter: u8) NumberParser(T) {
-    return NumberParser(T){ .token_it = std.mem.tokenizeScalar(u8, input, delimiter) };
+pub fn numberParser(comptime T: type, input: []const u8) NumberParser(T) {
+    return numberParserWithDelimiter(T, input, ' ');
 }
 
 pub fn allocGrid(comptime T: type, alloc: std.mem.Allocator, n: usize, m: usize) ![][]T {
